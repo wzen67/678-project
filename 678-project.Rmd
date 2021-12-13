@@ -1,0 +1,101 @@
+---
+title: "Happiness"
+author: "Will Zen"
+date: "12/10/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(lattice)
+library(lme4)
+library(tidyverse)
+```
+
+## Abstract
+I wanted to see if certain factors were more important for determining level of happiness.
+The EDA suggests that GDP per capita, family and life expectancy are important and other factors are not. The model is inconclusive. There is data for every year from 2015 to 2019 and each row is a country. The outcome variable is happiness score and the indicators are factors like GDP per capita and family. 2015 and 2016 are the only years with columns for geographic regions like Sub-Saharan Africa and North America. I'll just use 2016.
+```{r}
+data <- read.csv('archive/2016.csv')
+```
+
+## EDA
+GDP per capita, family and life expectancy correlate strongly with happiness score while freedom, perception of government corruption and generosity have no correlation. Dystopia residual arguably correlates a little.
+```{r eda}
+ggplot(data) +
+  aes(Economy..GDP.per.Capita., Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+```{r}
+ggplot(data) +
+  aes(Family, Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+```{r}
+ggplot(data) +
+  aes(Health..Life.Expectancy., Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+```{r}
+ggplot(data) +
+  aes(Freedom, Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+```{r}
+ggplot(data) +
+  aes(Trust..Government.Corruption., Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+```{r}
+ggplot(data) +
+  aes(Generosity, Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+```{r}
+ggplot(data) +
+  aes(Dystopia.Residual, Happiness.Score) +
+  geom_point(aes(color = Region))
+```
+## Model
+```{r model, echo=TRUE}
+model <- lmer(Happiness.Score ~ Economy..GDP.per.Capita.+
+                                Family+
+                                Health..Life.Expectancy.+
+                                Freedom+
+                                Trust..Government.Corruption.+
+                                Generosity+
+                                (1+Economy..GDP.per.Capita.|Region)+
+                                (1+Family|Region)+
+                                (1+Health..Life.Expectancy.|Region)+
+                                (1+Freedom|Region)+
+                                (1+Trust..Government.Corruption.|Region)+
+                                (1+Generosity|Region), data)
+```
+|                                |(Intercept) |GDP pC    |Family |LExpectancy   |Freedom |Corruption |Generosity   |
+|:---:                              |:---:       |:---:          |:---:           |:---:     |:---:                      |:---:                                 |:---:         |
+|Sub-Saharan Africa                 |2.687820                |0.7563349 |0.4995310                |0.2440410 |0.9170197                     |0.4481769  |1.9511724   |
+|Central and Eastern Europe         |2.287483                |1.0268473 |1.1379401                |0.7916549 |0.9170198                     |0.7434319  |0.5903866  |
+|Australia and New Zealand          |2.240188               |1.0588049 |1.3951723                |1.1713515 |0.9170197                     |1.0429694  |0.4236084  |
+
+## Discussion
+The EDA suggests only three variables matter but the model coefficients do not. I modeled on all regions but I chose to show these regions. Sub-Saharan Africa and Central and Eastern Europe have the most countries in the dataset and countries in the "Australia and New Zealand" region have high GDP per capita, family and life expectancy. The freedom coefficients are all weirdly similar. Generosity is the only variable that has any negative coefficients; four out of the ten coefficients are negative (see the full results section).
+
+While doing this project, I saw a strong criticism of happiness metrics. I heard from someone on the internet that happiness metrics actually measure attitudes towards happiness. And there is a type of happiness score that correlates with suicide rate but they should be negatively correlated. In the future, I could try to recreate the suicide correlation but that seems like an indirect way to examine the validity of happiness score. I think it would be better to examine how the happiness data I used were collected and explore the attitudes towards happiness idea.
+
+# Appendix
+## Model Validation
+```{r val, echo=FALSE, fig.height=2.5, fig.width=6, fig.cap="Residual plot and Q-Q plot."}
+#binnedplot(fitted(model),resid(model))
+plot(model)
+qqmath(model)
+```
+```{r echo=FALSE, fig.height=2, fig.width=4, fig.cap="Residuals vs Leverage."}
+ggplot(data.frame(lev=hatvalues(model),pearson=residuals(model,type="pearson")),
+      aes(x=lev,y=pearson)) +
+    geom_point() +
+    theme_bw()
+```
+## Full Results
+```{r full results}
+coef(model)
+```
